@@ -2,10 +2,23 @@ const { parentPort } = require('worker_threads');
 
 let gameEnded = false;
 const CHOICES = 5;
-const players = [];
+const lobby = {
+    players: [],
+    state: 'wait',
+    weather: 'sunny',
+};
 
 function initializeLobby(playersData) {
-    players.push(...playersData);
+    for (let i = 0; i < playersData.length; i++) {
+        lobby.players.push({
+            id: playersData[i],
+            height: 1,
+            resources: [2,2,2],
+            choices: [],
+            pick: null,
+        });
+    }
+    console.log('lobby initialized');
 }
 
 // Riceve un messaggio dal thread principale
@@ -26,11 +39,11 @@ parentPort.onmessage = function(event) {
 };
 
 function sendChoices() {
-    for (let i = 0; i < players.length; i++) {
+    for (let i = 0; i < lobby.players.length; i++) {
         const choices = randomChoices();
         parentPort.postMessage({
             type: 'choices',
-            player: players[i],
+            player: lobby.players[i].id,
             choices: choices,
         });
     }

@@ -91,6 +91,13 @@ wss.on('connection', (ws) => {
         switch (message.type) {
             case 'play':
                 console.log('play received');
+                if (clientStatuses.get(ws.id) !== 'connected') {
+                    ws.send(JSON.stringify({
+                        type: 'error',
+                        message: 'Invalid play request'
+                    }));
+                    return;
+                }
                 clientStatuses.set(ws.id, 'queued');
                 clientQueue.push(ws);
                 checkQueue();
