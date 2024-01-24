@@ -1,49 +1,80 @@
 const WebSocket = require('ws');
+const { Worker } = require('worker_threads');
 
 const wss = new WebSocket.Server({ port: 8080 });
 
 let clientId = 0;
 let lobbyId = 0;
 let clientQueue = [];
-let clientStatuses = {};
-let lobbies = {};
+let clientStatuses = new Map();
+let lobbies = new Map();
 
 function checkQueue() {
     if (clientQueue.length >= 2) {
 
-        const player1 = clientQueue.shift();
-        const player2 = clientQueue.shift();
+        // grab the first 5 clients from the queue
+        const players = clientQueue.splice(0, 5);
 
-        const msg = JSON.stringify({
-            type: 'matchFound',
-            lobby: lobbyId,
+        const lobbyWorker = new Worker('./lobby.js');
+
+        lobbies.set(lobbyId++, {
+            players: players,
+            worker: lobbyWorker,
         });
 
-        player1.send(msg);
-        player2.send(msg);
+        lobbyWorker.postMessage({
+            type: 'matchFound',
+            players: players.map(player => player.id),
+        });
 
-        clientStatuses[player1.id] = 'playing';
-        clientStatuses[player2.id] = 'playing';
+        lobbyWorker.on('message', (message) => {
+            switch (message.type) {
+                case 'choices':
+                    console.log('choices received');
+                    // send to player
+                    const player = players.find(player => player.id === message.player);
+                    player.send(JSON.stringify({
+                        type: 'choices',
+                        choices: message.choices,
+                    }));
+                    break;
+                case 'lobbyUpdated':
+                    // send to all players
+                    players.forEach(player => {
+                        player.send(JSON.stringify({
+                            type: 'lobbyUpdated',
+                            lobby: message.lobby,
+                        }));
+                    });
+                    break;
+                case 'gameEnded':
+                    // send to all players
+                    players.forEach(player => {
+                        player.send(JSON.stringify({
+                            type: 'gameEnded',
+                            lobby: message.lobby,
+                        }));
+                    });
+                    lobbyWorker.terminate();
+                    lobbies.delete(message.lobby);
+                    break;
+                default:
+                    break;
+            }     
+        });
 
-        lobbies[lobbyId++] = {
-            players: [{
-                id: player1.id,
-                height: 1,
-                resources: [2,2,2]
-            }, {
-                id: player2.id,
-                height: 1,
-                resources: [2,2,2]
-            }],
-            state: 'wait',
-            weather: 'sunny',
-        };
     }
 }
 
 wss.on('connection', (ws) => {
     ws.id = clientId++;
-    clientStatuses[ws.id] = 'connected';
+    clientStatuses.set(ws.id, 'connected');
+    console.log('Client connected');
+
+    // ws.send(JSON.stringify({
+    //     type: 'connected',
+    //     id: ws.id,
+    // }));
 
     ws.on('message', (message) => {
         try {
@@ -59,10 +90,20 @@ wss.on('connection', (ws) => {
 
         switch (message.type) {
             case 'play':
-                clientStatuses[ws.id] = 'queued';
+                console.log('play received');
+                clientStatuses.set(ws.id, 'queued');
                 clientQueue.push(ws);
                 checkQueue();
                 break;
+            case 'pick':
+                // send to lobby worker
+                const lobby = lobbies.get(message.lobby);
+                lobby.worker.postMessage({
+                    type: 'pick',
+                    player: ws.id,
+                    choice: message.choice
+                });
+                break;          
         
             default:
                 break;
@@ -70,19 +111,11 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        switch (clientStatuses[ws.id]) {
+        switch (clientStatuses.get(ws.id)) {
             case 'queued':
                 clientQueue = clientQueue.filter(client => client !== ws);                
                 break;
             case 'playing':
-                // const lobby = Object.values(lobbies).find(lobby => lobby.player1 === ws || lobby.player2 === ws);
-                // if (lobby) {
-                //     const otherPlayer = lobby.player1 === ws ? lobby.player2 : lobby.player1;
-                //     otherPlayer.send(JSON.stringify({
-                //         type: 'opponentDisconnected'
-                //     }));
-                //     delete lobbies[lobby.id];
-                // }
                 break;
             default:
                 break;
