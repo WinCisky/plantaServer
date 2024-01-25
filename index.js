@@ -81,8 +81,8 @@ function checkQueue() {
  */
 wss.on('connection', (ws) => {
     ws.id = clientId++;
-    clientStatuses.set(ws.id, 'hello connected');
-    console.log('Client connected');
+    clientStatuses.set(ws.id, 'connected');
+    console.log('Hello Client connected');
 
     /**
      * handle messages from the client
