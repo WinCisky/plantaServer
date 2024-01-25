@@ -12,13 +12,27 @@ ws.on('open', function open() {
 ws.on('message', function incoming(data) {    
     const message = JSON.parse(data);
     console.log(message);
-    if (message.type === 'matchFound') {
-        console.log('match found');
-        ws.send(JSON.stringify({
-            type: 'pick',
-            lobby: message.lobby,
-            choice: 'rock'
-        }));
+    switch (message.type) {
+        case 'error':
+            console.log('error');
+            break;
+        case 'matchFound':
+            console.log('match found');
+            ws.send(JSON.stringify({
+                type: 'pick',
+                lobby: message.lobby,
+                choice: 'rock'
+            }));
+            break;
+        case 'playerDisconnected':
+            console.log('player disconnected');
+            break;
+        case 'endGame':
+            console.log('end game');
+            ws.close();
+            break;
+        default:
+            break;
     }
 });
 

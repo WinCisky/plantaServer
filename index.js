@@ -9,12 +9,14 @@ let clientQueue = [];
 let clientStatuses = new Map();
 let lobbies = new Map();
 
+/**
+ * check if there are enough players in the queue
+ * if there are, creates a new lobby
+ */
 function checkQueue() {
     if (clientQueue.length >= 2) {
 
-        // grab the first 5 clients from the queue
         const players = clientQueue.splice(0, 5);
-
         const lobbyWorker = new Worker('./lobby.js');
 
         lobbies.set(lobbyId++, {
@@ -27,11 +29,13 @@ function checkQueue() {
             players: players.map(player => player.id),
         });
 
+        /**
+         * handle messages from the lobby worker
+         */
         lobbyWorker.on('message', (message) => {
             switch (message.type) {
                 case 'choices':
                     console.log('choices received');
-                    // send to player
                     const player = players.find(player => player.id === message.player);
                     player.send(JSON.stringify({
                         type: 'choices',
@@ -39,7 +43,6 @@ function checkQueue() {
                     }));
                     break;
                 case 'lobbyUpdated':
-                    // send to all players
                     players.forEach(player => {
                         player.send(JSON.stringify({
                             type: 'lobbyUpdated',
@@ -47,11 +50,18 @@ function checkQueue() {
                         }));
                     });
                     break;
-                case 'gameEnded':
-                    // send to all players
+                case 'playerDisconnected':
                     players.forEach(player => {
                         player.send(JSON.stringify({
-                            type: 'gameEnded',
+                            type: 'playerDisconnected',
+                            player: message.player,
+                        }));
+                    });
+                    break;
+                case 'endGame':
+                    players.forEach(player => {
+                        player.send(JSON.stringify({
+                            type: 'endGame',
                             lobby: message.lobby,
                         }));
                     });
@@ -66,21 +76,21 @@ function checkQueue() {
     }
 }
 
+/**
+ * handle new connections
+ */
 wss.on('connection', (ws) => {
     ws.id = clientId++;
     clientStatuses.set(ws.id, 'connected');
     console.log('Client connected');
 
-    // ws.send(JSON.stringify({
-    //     type: 'connected',
-    //     id: ws.id,
-    // }));
-
+    /**
+     * handle messages from the client
+     */
     ws.on('message', (message) => {
         try {
             message = JSON.parse(message);
         } catch (error) {
-            // If it fails, send an error message to the client
             ws.send(JSON.stringify({
                 type: 'error',
                 message: 'Invalid message format'
@@ -103,7 +113,6 @@ wss.on('connection', (ws) => {
                 checkQueue();
                 break;
             case 'pick':
-                // send to lobby worker
                 const lobby = lobbies.get(message.lobby);
                 lobby.worker.postMessage({
                     type: 'pick',
@@ -117,6 +126,9 @@ wss.on('connection', (ws) => {
         }
     });
 
+    /**
+     * handle client disconnections
+     */
     ws.on('close', () => {
         switch (clientStatuses.get(ws.id)) {
             case 'queued':
@@ -128,6 +140,4 @@ wss.on('connection', (ws) => {
                 break;
         }
     });
-
-    // ws.send('Hello, I am server');
 });
