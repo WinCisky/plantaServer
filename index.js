@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const { Worker } = require('worker_threads');
 
-const wss = new WebSocket.Server({ port: 8080 });
+const wss = new WebSocket.Server({ port: 6666 });
 
 let clientId = 0;
 let lobbyId = 0;
