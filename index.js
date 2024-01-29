@@ -50,6 +50,7 @@ function checkQueue() {
                         player.send(JSON.stringify({
                             type: 'lobbyUpdated',
                             lobby: message.lobby,
+                            playersChoices: message.playersChoices,
                         }));
                     });
                     break;
@@ -66,6 +67,7 @@ function checkQueue() {
                         player.send(JSON.stringify({
                             type: 'endGame',
                             lobby: message.lobby,
+                            winner: message.winner,
                         }));
                     });
                     lobbyWorker.terminate();

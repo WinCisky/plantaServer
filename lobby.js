@@ -3,7 +3,7 @@ const { parentPort } = require('worker_threads');
 let gameEnded = false;
 let lobbyId = 0;
 const CHOICES = 5;
-const TIMEOUT = 10000;
+const TIMEOUT = 30000;
 const lobby = {
     players: [],
     state: 'wait',
@@ -77,7 +77,7 @@ function checkDisconnectedPlayers() {
 }
 
 /**
- * send choices to all the players
+ * send choices to every player of the lobby
  */
 function sendChoices() {
     for (let i = 0; i < lobby.players.length; i++) {
@@ -92,19 +92,81 @@ function sendChoices() {
     }
 }
 
+/**
+ * send updated lobby to every player of the lobby
+ * with the choices of every player
+ */
 function sendUpdatedLobby() {
-    // TODO
+    parentPort.postMessage({
+        type: 'lobbyUpdated',
+        lobby: lobbyId,
+        playersChoices: lobby.players.map(player => {
+            return {
+                id: player.id,
+                pick: player.pick,
+            };
+        })
+    });
 }
 
+/**
+ * update the resources of the player
+ * @param {Object} player 
+ * @param {number} choice
+ */
+function updatePlayerResources(player, choice) {
+    switch (choice) {
+        case 0:
+            player.resources[0]++;
+            player.height++;
+            break;
+        case 1:
+            player.resources[1]++;
+            break;
+        case 2:
+            player.resources[2]++;
+            break;
+        default:
+            break;
+    }
+}
+
+/**
+ * update the resources of every player
+ */
+function updatePlayersResources() {
+    for (let i = 0; i < lobby.players.length; i++) {
+        updatePlayerResources(lobby.players[i], lobby.players[i].pick);
+    }
+}
+
+/**
+ * check if the game ended
+ * @returns {boolean} true if the game ended, false otherwise
+ */
 function checkGameEnded() {
-    // TODO
+    for (let i = 0; i < lobby.players.length; i++) {
+        if (lobby.players[i].height >= 10) {
+            return true;
+        }
+    }
     return false;
 }
 
+/**
+ * update the lobby with the choices of the players
+ * and check if the game ended
+ * if it did, send a message to the main thread
+ */
 function updateLobbyWithChoices() {
-    // TODO
     sendUpdatedLobby();
+    updatePlayersResources();
     gameEnded = checkGameEnded();
+    if (gameEnded) {
+        sendEndGame();
+    } else {
+        console.log(lobby.players);
+    }
 }
 
 
@@ -128,6 +190,10 @@ function sendPlayerDisconnected(playerId) {
 function sendEndGame() {
     parentPort.postMessage({
         type: 'endGame',
+        lobby: lobbyId,
+        winner: lobby.players.reduce((prev, curr) => {
+            return prev.height > curr.height ? prev : curr;
+        }).id,
     });
 }
 
