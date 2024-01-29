@@ -1,6 +1,7 @@
 const { parentPort } = require('worker_threads');
 
 let gameEnded = false;
+let lobbyId = 0;
 const CHOICES = 5;
 const TIMEOUT = 10000;
 const lobby = {
@@ -13,7 +14,7 @@ const lobby = {
  * initialization of the lobby
  * @param {Array} playersData
  */
-function initializeLobby(playersData) {
+function initializeLobby(playersData, lobbyId) {
     for (let i = 0; i < playersData.length; i++) {
         lobby.players.push({
             id: playersData[i],
@@ -24,6 +25,7 @@ function initializeLobby(playersData) {
             lastSeen: Date.now(),
         });
     }
+    this.lobbyId = lobbyId;
     console.log('lobby initialized');
 }
 
@@ -58,7 +60,6 @@ function checkDisconnectedPlayers() {
     const toRemove = [];
     for (let i = 0; i < lobby.players.length; i++) {
         if ((now - lobby.players[i].lastSeen) > TIMEOUT) {
-            console.log('player disconnected', lobby.players[i].id);
             for (let j = 0; j < lobby.players.length; j++) {
                 if (i == j) continue;
                 sendPlayerDisconnected(lobby.players[j].id);
@@ -68,8 +69,6 @@ function checkDisconnectedPlayers() {
     }
 
     lobby.players = lobby.players.filter((player, i) => !toRemove.includes(i));
-    console.log('players left', lobby.players.length);
-    console.log('players', lobby.players);
 
     if (lobby.players.length < 2) {
         sendEndGame();
@@ -87,16 +86,14 @@ function sendChoices() {
         parentPort.postMessage({
             type: 'choices',
             player: lobby.players[i].id,
+            lobby: lobbyId,
             choices: choices,
         });
     }
-
-    console.log('choices sent');
 }
 
 function sendUpdatedLobby() {
     // TODO
-    console.log('send lobby updated');
 }
 
 function checkGameEnded() {
@@ -108,7 +105,6 @@ function updateLobbyWithChoices() {
     // TODO
     sendUpdatedLobby();
     gameEnded = checkGameEnded();
-    console.log('lobby updated');
 }
 
 
@@ -150,11 +146,10 @@ parentPort.onmessage = function(event) {
 
     switch (event.data.type) {
         case 'matchFound':
-            initializeLobby(event.data.players);
+            initializeLobby(event.data.players, event.data.lobbyId);
             break;
         case 'pick':
-            // TODO
-            console.log('pick received', event.data);
+            lobby.players.find(player => player.id === event.data.player).pick = event.data.choice;
             updateLasteSeen(event.data.player);
             break;
         case 'pong':
@@ -170,10 +165,8 @@ parentPort.onmessage = function(event) {
 /* main loop for the lobby */
 async function main() {
     do {
-        console.log('loop');
         await new Promise(resolve => setTimeout(resolve, 5000));
         sendChoices();
-        console.log('loop');
         await new Promise(resolve => setTimeout(resolve, 5000));
         updateLobbyWithChoices();
         checkDisconnectedPlayers();

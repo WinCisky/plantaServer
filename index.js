@@ -19,7 +19,7 @@ function checkQueue() {
         const players = clientQueue.splice(0, 5);
         const lobbyWorker = new Worker('./lobby.js');
 
-        lobbies.set(lobbyId++, {
+        lobbies.set(lobbyId, {
             players: players,
             worker: lobbyWorker,
         });
@@ -27,7 +27,10 @@ function checkQueue() {
         lobbyWorker.postMessage({
             type: 'matchFound',
             players: players.map(player => player.id),
+            lobby: lobbyId,
         });
+
+        lobbyId++;
 
         /**
          * handle messages from the lobby worker
@@ -35,10 +38,10 @@ function checkQueue() {
         lobbyWorker.on('message', (message) => {
             switch (message.type) {
                 case 'choices':
-                    console.log('choices received');
                     const player = players.find(player => player.id === message.player);
                     player.send(JSON.stringify({
                         type: 'choices',
+                        lobby: message.lobby,
                         choices: message.choices,
                     }));
                     break;
@@ -82,7 +85,7 @@ function checkQueue() {
 wss.on('connection', (ws) => {
     ws.id = clientId++;
     clientStatuses.set(ws.id, 'connected');
-    console.log('Hello Client connected');
+    console.log('Client connected');
 
     /**
      * handle messages from the client
@@ -114,6 +117,13 @@ wss.on('connection', (ws) => {
                 break;
             case 'pick':
                 const lobby = lobbies.get(message.lobby);
+                if (!lobby) {
+                    ws.send(JSON.stringify({
+                        type: 'error',
+                        message: 'Invalid pick request'
+                    }));
+                    return;
+                }
                 lobby.worker.postMessage({
                     type: 'pick',
                     player: ws.id,

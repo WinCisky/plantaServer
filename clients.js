@@ -1,6 +1,12 @@
+require('dotenv').config();
 const WebSocket = require('ws');
 
-const ws = new WebSocket('ws://planta.opentrust.it:8080');
+let possibleChoices = [0,0,0];
+const serverUrl = process.env.NODE_ENV === 'production' 
+    ? 'ws://planta.opentrust.it:8080' 
+    : 'ws://localhost:6666';
+
+const ws = new WebSocket(serverUrl);
 
 ws.on('open', function open() {
     console.log('connected');
@@ -27,6 +33,14 @@ ws.on('message', function incoming(data) {
         case 'playerDisconnected':
             console.log('player disconnected');
             break;
+        case 'choices':
+            possibleChoices = message.choices;
+            ws.send(JSON.stringify({
+                type: 'pick',
+                lobby: message.lobby,
+                choice: randomChoice()
+            }));
+            break;
         case 'endGame':
             console.log('end game');
             ws.close();
@@ -39,3 +53,8 @@ ws.on('message', function incoming(data) {
 ws.on('close', function close() {
     console.log('disconnected');
 });
+
+
+function randomChoice() {
+    return possibleChoices[Math.floor(Math.random() * possibleChoices.length)];
+}
