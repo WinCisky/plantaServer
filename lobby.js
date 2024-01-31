@@ -3,11 +3,21 @@ const { parentPort } = require('worker_threads');
 let gameEnded = false;
 let lobbyId = 0;
 const CHOICES = 5;
+const MAX_RESOURCES = 10;
+const RESOURCES_TRESHOLD = 7;
+const RESOURCE_INCREMENT = 5;
+const RESOURCE_DECREMENT = 3;
+const TRINITY_INCREMENT = 3;
+const TRINITY_DECREMENT = 1;
+const GROWTH_DECREMENT = 1;
+const WEATHER_INCREMENT = 1;
+const WEATHERS = ['sunny', 'rainy'];
+const WINNING_HEIGHT = 5;
 const TIMEOUT = 30000;
 const lobby = {
     players: [],
     state: 'wait',
-    weather: 'sunny',
+    weather: WEATHERS[Math.floor(Math.random() * WEATHERS.length)],
 };
 
 /**
@@ -19,8 +29,8 @@ function initializeLobby(playersData, lobbyId) {
         lobby.players.push({
             id: playersData[i],
             height: 1,
-            resources: [2,2,2],
-            choices: [0,0,0],
+            resources: [2, 2, 2],
+            choices: [0, 0, 0],
             pick: 0,
             lastSeen: Date.now(),
         });
@@ -110,24 +120,117 @@ function sendUpdatedLobby() {
 }
 
 /**
+ * change the value of a resource
+ * @param {number} initialValue
+ * @param {number} change
+ * @param {number} max
+ * @param {boolean} isIncrement
+ * @returns {number} new value of the resource
+ */
+function changeResourceValue(initialValue, change, max, isIncrement) {
+    if (isIncrement) {
+        return initialValue + change > max
+            ? max
+            : initialValue + change;
+    } else {
+        return initialValue - change < 0
+            ? 0
+            : initialValue - change;
+    }
+}
+
+/**
+ * decrement the value of a resource
+ * @param {number} initialValue 
+ * @param {number} change 
+ * @returns {number} new value of the resource
+ */
+function decrementResourceValue(initialValue, change) {
+    return changeResourceValue(initialValue, change, 0, false);
+}
+
+/**
+ * increment the value of a resource
+ * @param {number} initialValue 
+ * @param {number} change 
+ * @param {number} max 
+ * @returns {number} new value of the resource
+ */
+function incrementResourceValue(initialValue, change, max) {
+    return changeResourceValue(initialValue, change, max, true);
+}
+
+/**
  * update the resources of the player
  * @param {Object} player 
  * @param {number} choice
  */
 function updatePlayerResources(player, choice) {
     switch (choice) {
-        case 0:
-            player.resources[0]++;
-            player.height++;
+        case 0: // increment resource 1 by RESOURCE_INCREMENT
+            player.resources[0] = incrementResourceValue(
+                player.resources[0],
+                RESOURCE_INCREMENT,
+                MAX_RESOURCES
+            );
             break;
-        case 1:
-            player.resources[1]++;
+        case 1: // increment resource 2 by RESOURCE_INCREMENT
+            player.resources[1] = incrementResourceValue(
+                player.resources[1], 
+                RESOURCE_INCREMENT, 
+                MAX_RESOURCES
+            );
             break;
-        case 2:
-            player.resources[2]++;
+        case 2: // increment resource 3 by RESOURCE_INCREMENT
+            player.resources[2] = incrementResourceValue(
+                player.resources[2], 
+                RESOURCE_INCREMENT, 
+                MAX_RESOURCES
+            );
+            break;
+        case 3: // increment all resources by TRINITY_INCREMENT
+            for (let i = 0; i < player.resources.length; i++) {
+                player.resources[i] = incrementResourceValue(
+                    player.resources[i], 
+                    TRINITY_INCREMENT, 
+                    MAX_RESOURCES
+                );
+            }
+            break;
+        case 4: // decrement random resource by RESOURCE_DECREMENT
+            const resource = Math.floor(Math.random() * player.resources.length);
+            player.resources[resource] = decrementResourceValue(
+                player.resources[resource], 
+                RESOURCE_DECREMENT
+            );
+            break;
+        case 5: // decrement all resources by TRINITY_DECREMENT
+            for (let i = 0; i < player.resources.length; i++) {
+                player.resources[i] = decrementResourceValue(
+                    player.resources[i], 
+                    TRINITY_DECREMENT
+                );
+            }
             break;
         default:
             break;
+    }
+
+    // TODO move into its own function (and do it after all players are update)
+    // weather increment
+    const weatherIndex = WEATHERS.indexOf(lobby.weather);
+    player.resources[weatherIndex] += WEATHER_INCREMENT;
+
+    // if all resources > RESOURCES_TRESHOLD -> height++ 
+    if (player.resources.every(resource => resource > RESOURCES_TRESHOLD)) {
+        player.height++;
+    }
+
+    // decrease all resources by 1 if > 0
+    for (let i = 0; i < player.resources.length; i++) {
+        player.resources[i] = player.resources[i] - GROWTH_DECREMENT < 0
+            ? 0
+            : player.resources[i] - GROWTH_DECREMENT;
     }
 }
 
@@ -146,7 +249,7 @@ function updatePlayersResources() {
  */
 function checkGameEnded() {
     for (let i = 0; i < lobby.players.length; i++) {
-        if (lobby.players[i].height >= 10) {
+        if (lobby.players[i].height >= WINNING_HEIGHT) {
             return true;
         }
     }
@@ -207,7 +310,7 @@ function sendEndGame() {
  * receive messages from the main thread and handles them
  * @param {MessageEvent} event 
  */
-parentPort.onmessage = function(event) {
+parentPort.onmessage = function (event) {
     console.log('Received message from main thread:', event.data);
 
     switch (event.data.type) {
