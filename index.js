@@ -30,6 +30,14 @@ function checkQueue() {
             lobby: lobbyId,
         });
 
+        players.forEach(player => {
+            clientStatuses.set(player.id, 'playing');
+            player.send(JSON.stringify({
+                type: 'matchFound',
+                lobby: lobbyId,
+            }));
+        });
+
         lobbyId++;
 
         /**
