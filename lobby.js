@@ -11,7 +11,7 @@ const TRINITY_INCREMENT = 3;
 const TRINITY_DECREMENT = 1;
 const GROWTH_DECREMENT = 1;
 const WEATHER_INCREMENT = 1;
-const WEATHERS = ['sunny', 'rainy'];
+const WEATHERS = ['sunny', 'rainy', 'moon'];
 const WINNING_HEIGHT = 5;
 const TIMEOUT = 30000;
 const lobby = {
@@ -98,6 +98,7 @@ function sendChoices() {
             player: lobby.players[i].id,
             lobby: lobbyId,
             choices: choices,
+            weather: lobby.weather,
         });
     }
 }
@@ -257,6 +258,13 @@ function checkGameEnded() {
 }
 
 /**
+ * update the weather of the lobby
+ */
+function updateWeather() {
+    lobby.weather = WEATHERS[Math.floor(Math.random() * WEATHERS.length)];
+}
+
+/**
  * update the lobby with the choices of the players
  * and check if the game ended
  * if it did, send a message to the main thread
@@ -335,6 +343,7 @@ parentPort.onmessage = function (event) {
 async function main() {
     do {
         await new Promise(resolve => setTimeout(resolve, 5000));
+        updateWeather();
         sendChoices();
         await new Promise(resolve => setTimeout(resolve, 5000));
         updateLobbyWithChoices();

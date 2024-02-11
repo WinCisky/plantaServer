@@ -51,6 +51,7 @@ function checkQueue() {
                         type: 'choices',
                         lobby: message.lobby,
                         choices: message.choices,
+                        weather: message.weather,
                     }));
                     break;
                 case 'lobbyUpdated':
