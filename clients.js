@@ -7,6 +7,7 @@ const serverUrl = process.env.NODE_ENV === 'production'
     : 'ws://localhost:6666';
 
 const ws = new WebSocket(serverUrl);
+let lobby = -1;
 
 ws.on('open', function open() {
     console.log('connected');
@@ -23,11 +24,12 @@ ws.on('message', function incoming(data) {
             console.log('error');
             break;
         case 'matchFound':
+            lobby = message.lobby;
             console.log('match found');
             ws.send(JSON.stringify({
                 type: 'pick',
-                lobby: message.lobby,
-                choice: 'rock'
+                lobby: lobby,
+                choice: randomChoice()
             }));
             break;
         case 'playerDisconnected':
@@ -37,7 +39,7 @@ ws.on('message', function incoming(data) {
             possibleChoices = message.choices;
             ws.send(JSON.stringify({
                 type: 'pick',
-                lobby: message.lobby,
+                lobby: lobby,
                 choice: randomChoice()
             }));
             break;
@@ -56,5 +58,7 @@ ws.on('close', function close() {
 
 
 function randomChoice() {
-    return possibleChoices[Math.floor(Math.random() * possibleChoices.length)];
+    const choice = possibleChoices[Math.floor(Math.random() * possibleChoices.length)];
+    console.log('choice', choice);
+    return choice;
 }
