@@ -200,7 +200,7 @@ function updatePlayerResources(player, choice) {
             break;
         case 4: // decrement resource 1 by RESOURCE_DECREMENT
             player.resources[0] = decrementResourceValue(
-                player.resources[resource], 
+                player.resources[0], 
                 RESOURCE_DECREMENT
             );
             break;
@@ -244,9 +244,10 @@ function updatePlayerResources(player, choice) {
 
     // decrease all resources by 1 if > 0
     for (let i = 0; i < player.resources.length; i++) {
-        player.resources[i] = player.resources[i] - GROWTH_DECREMENT < 0
-            ? 0
-            : player.resources[i] - GROWTH_DECREMENT;
+        player.resources[i] = decrementResourceValue(
+            player.resources[i], 
+            GROWTH_DECREMENT
+        );
     }
 }
 
