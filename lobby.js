@@ -2,7 +2,7 @@ const { parentPort } = require('worker_threads');
 
 let gameEnded = false;
 let lobbyId = 0;
-const CHOICES = 5;
+const CHOICES = 7;
 const MAX_RESOURCES = 10;
 const RESOURCES_TRESHOLD = 7;
 const RESOURCE_INCREMENT = 5;
@@ -198,14 +198,25 @@ function updatePlayerResources(player, choice) {
                 );
             }
             break;
-        case 4: // decrement random resource by RESOURCE_DECREMENT
-            const resource = Math.floor(Math.random() * player.resources.length);
-            player.resources[resource] = decrementResourceValue(
+        case 4: // decrement resource 1 by RESOURCE_DECREMENT
+            player.resources[0] = decrementResourceValue(
                 player.resources[resource], 
                 RESOURCE_DECREMENT
             );
             break;
-        case 5: // decrement all resources by TRINITY_DECREMENT
+        case 5: // decrement resource 2 by RESOURCE_DECREMENT
+            player.resources[1] = decrementResourceValue(
+                player.resources[1], 
+                RESOURCE_DECREMENT
+            );
+            break;
+        case 6: // decrement resource 3 by RESOURCE_DECREMENT
+            player.resources[2] = decrementResourceValue(
+                player.resources[2], 
+                RESOURCE_DECREMENT
+            );
+            break;
+        case 7: // decrement all resources by TRINITY_DECREMENT
             for (let i = 0; i < player.resources.length; i++) {
                 player.resources[i] = decrementResourceValue(
                     player.resources[i], 

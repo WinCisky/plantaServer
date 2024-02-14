@@ -35,6 +35,7 @@ function checkQueue() {
             player.send(JSON.stringify({
                 type: 'matchFound',
                 lobby: lobbyId,
+                players: players.map(player => player.id),
             }));
         });
 
