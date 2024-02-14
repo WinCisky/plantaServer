@@ -231,7 +231,11 @@ function updatePlayerResources(player, choice) {
     // TODO move into its own function (and do it after all players are update)
     // weather increment
     const weatherIndex = WEATHERS.indexOf(lobby.weather);
-    player.resources[weatherIndex] += WEATHER_INCREMENT;
+    player.resources[weatherIndex] = incrementResourceValue(
+        player.resources[weatherIndex], 
+        WEATHER_INCREMENT, 
+        MAX_RESOURCES
+    );
 
     // if all resources > RESOURCES_TRESHOLD -> height++ 
     if (player.resources.every(resource => resource > RESOURCES_TRESHOLD)) {
